@@ -22,6 +22,34 @@ import models.modules.module_util as mutil
 from utils.util import opt_get
 
 
+class SelfAttention(nn.Module):
+    """NEW CLASS FOR ATteNtION"""
+    def __init__(self, in_channels):
+        super(SelfAttention, self).__init__()
+        self.query_conv = nn.Conv2d(in_channels, in_channels // 8, kernel_size=1)
+        self.key_conv = nn.Conv2d(in_channels, in_channels // 8, kernel_size=1)
+        self.value_conv = nn.Conv2d(in_channels, in_channels, kernel_size=1)
+        self.gamma = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        batch_size, channels, width, height = x.size()
+        
+        # Calculate query, key, and value
+        proj_query = self.query_conv(x).view(batch_size, -1, width * height).permute(0, 2, 1)
+        proj_key = self.key_conv(x).view(batch_size, -1, width * height)
+        energy = torch.bmm(proj_query, proj_key)
+        attention = torch.nn.functional.softmax(energy, dim=-1)
+        
+        proj_value = self.value_conv(x).view(batch_size, -1, width * height)
+        
+        # Calculate the output using attention and apply scaling factor gamma
+        out = torch.bmm(proj_value, attention.permute(0, 2, 1))
+        out = out.view(batch_size, channels, width, height)
+        out = self.gamma * out + x
+        
+        return out
+
+
 class ResidualDenseBlock_5C(nn.Module):
     def __init__(self, nf=64, gc=32, bias=True):
         super(ResidualDenseBlock_5C, self).__init__()
@@ -33,6 +61,9 @@ class ResidualDenseBlock_5C(nn.Module):
         self.conv5 = nn.Conv2d(nf + 4 * gc, nf, 3, 1, 1, bias=bias)
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
+        # Add the self-attention block
+        self.self_attention = SelfAttention(nf)
+
         # initialization
         mutil.initialize_weights([self.conv1, self.conv2, self.conv3, self.conv4, self.conv5], 0.1)
 
@@ -42,6 +73,7 @@ class ResidualDenseBlock_5C(nn.Module):
         x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
         x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
         x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
+        x5 = self.self_attention(x5)
         return x5 * 0.2 + x
 
 
