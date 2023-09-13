@@ -148,7 +148,7 @@ def main():
         imwrite(path_out_sr, sr)
 
         meas = OrderedDict(conf=conf, heat=heat, name=idx_test)
-        meas['PSNR'], meas['SSIM'], meas['LPIPS'] = measure.measure(sr, hr)
+        meas['PSNR'], meas['SSIM'], meas['LPIPS'], meas['BRISQUE'] = measure.measure(sr, hr)
 
         lr_reconstruct_rgb = imresize(sr, 1 / opt['scale'])
         meas['LRC PSNR'] = psnr(lq_orig, lr_reconstruct_rgb)
