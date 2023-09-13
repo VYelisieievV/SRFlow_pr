@@ -25,6 +25,8 @@ import argparse
 from natsort import natsort
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
+
+from brisque import BRISQUE
 import lpips
 
 
@@ -33,9 +35,10 @@ class Measure():
         self.device = 'cuda' if use_gpu else 'cpu'
         self.model = lpips.LPIPS(net=net)
         self.model.to(self.device)
+        self.brisque_metric = BRISQUE(url=False)
 
     def measure(self, imgA, imgB):
-        return [float(f(imgA, imgB)) for f in [self.psnr, self.ssim, self.lpips]]
+        return [float(f(imgA, imgB)) for f in [self.psnr, self.ssim, self.lpips, self.brisque]]
 
     def lpips(self, imgA, imgB, model=None):
         tA = t(imgA).to(self.device)
@@ -51,6 +54,9 @@ class Measure():
     def psnr(self, imgA, imgB):
         psnr_val = psnr(imgA, imgB)
         return psnr_val
+
+    def brisque(self, imgA, imgB):
+        return self.brisque_metric(imgB)
 
 
 def t(img):
@@ -78,8 +84,8 @@ def imread(path):
     return cv2.imread(path)[:, :, [2, 1, 0]]
 
 
-def format_result(psnr, ssim, lpips):
-    return f'{psnr:0.2f}, {ssim:0.3f}, {lpips:0.3f}'
+def format_result(psnr, ssim, lpips, brisque):
+    return f'{psnr:0.2f}, {ssim:0.3f}, {lpips:0.3f}, {brisque:0.3f}'
 
 def measure_dirs(dirA, dirB, use_gpu, verbose=False):
     if verbose:
@@ -104,7 +110,7 @@ def measure_dirs(dirA, dirB, use_gpu, verbose=False):
         result = OrderedDict()
 
         t = time.time()
-        result['psnr'], result['ssim'], result['lpips'] = measure.measure(imread(pathA), imread(pathB))
+        result['psnr'], result['ssim'], result['lpips'], result['brisque'] = measure.measure(imread(pathA), imread(pathB))
         d = time.time() - t
         vprint(f"{pathA.split('/')[-1]}, {pathB.split('/')[-1]}, {format_result(**result)}, {d:0.1f}")
 
@@ -113,8 +119,9 @@ def measure_dirs(dirA, dirB, use_gpu, verbose=False):
     psnr = np.mean([result['psnr'] for result in results])
     ssim = np.mean([result['ssim'] for result in results])
     lpips = np.mean([result['lpips'] for result in results])
+    brisque = np.mean([result['brisque'] for result in results])
 
-    vprint(f"Final Result: {format_result(psnr, ssim, lpips)}, {time.time() - t_init:0.1f}s")
+    vprint(f"Final Result: {format_result(psnr, ssim, lpips, brisque)}, {time.time() - t_init:0.1f}s")
 
 
 if __name__ == "__main__":
