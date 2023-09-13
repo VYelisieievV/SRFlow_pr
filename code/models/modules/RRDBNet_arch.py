@@ -62,7 +62,7 @@ class ResidualDenseBlock_5C(nn.Module):
         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
         # Add the self-attention block
-        self.self_attention = SelfAttention(nf)
+        # self.self_attention = SelfAttention(nf)
 
         # initialization
         mutil.initialize_weights([self.conv1, self.conv2, self.conv3, self.conv4, self.conv5], 0.1)
@@ -73,7 +73,7 @@ class ResidualDenseBlock_5C(nn.Module):
         x3 = self.lrelu(self.conv3(torch.cat((x, x1, x2), 1)))
         x4 = self.lrelu(self.conv4(torch.cat((x, x1, x2, x3), 1)))
         x5 = self.conv5(torch.cat((x, x1, x2, x3, x4), 1))
-        x5 = self.self_attention(x5)
+        # x5 = self.self_attention(x5)
         return x5 * 0.2 + x
 
 
