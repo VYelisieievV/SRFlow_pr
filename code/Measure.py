@@ -56,7 +56,7 @@ class Measure():
         return psnr_val
 
     def brisque(self, imgA, imgB):
-        return self.brisque_metric(imgB)
+        return self.brisque_metric(imgA)
 
 
 def t(img):
